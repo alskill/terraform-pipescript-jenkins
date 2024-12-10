@@ -1,0 +1,57 @@
+pipeline {
+    agent any
+    environment {
+        // Securely use AWS credentials
+        cred = credentials('aws-key')
+    }
+    stages {
+        stage('Checkout Code') {
+            steps {
+                // Checkout the repository from version control
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/main']], // Replace with your branch name
+                    userRemoteConfigs: [[
+                        credentialsId: 'your-git-credentials-id', // Replace with your Jenkins Git credentials ID
+                        url: 'https://github.com/your-org/your-repo.git' // Replace with your Git repository URL
+                    ]]
+                ])
+            }
+        }
+        stage('Terraform Init') {
+            steps {
+                sh '''
+                    # Initialize Terraform
+                    terraform init
+                '''
+            }
+        }
+        stage('Terraform Plan') {
+            steps {
+                sh '''
+                    # Generate a Terraform execution plan
+                    terraform plan -out=tfplan
+                '''
+            }
+        }
+        stage('Terraform Apply') {
+            steps {
+                sh '''
+                    # Apply the Terraform execution plan
+                    terraform apply -auto-approve tfplan
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            echo 'Pipeline execution completed.'
+        }
+        cleanup {
+            sh '''
+                # Clean up files generated during the pipeline
+                rm -rf .terraform tfplan
+            '''
+        }
+    }
+}
